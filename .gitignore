@@ -1,0 +1,28 @@
+node_modules
+dist
+.mastra
+.env.development
+.env
+*.db
+*.db-*
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# Bot specific
+downloads/
+*.session
+*.session-journal
+config.env
+mergebotlog.txt
+*.log
+temp/
+tmp/

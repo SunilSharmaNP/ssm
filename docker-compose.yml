@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  merge-bot:
+    build: .
+    container_name: merge-bot
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Kolkata
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+      - ./logs:/app/logs
+      - ./config.env:/app/config.env:ro
+    networks:
+      - merge-bot-network
+    depends_on:
+      - mongodb
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1GB
+          cpus: '0.5'
+        reservations:
+          memory: 512MB
+          cpus: '0.25'
+
+  mongodb:
+    image: mongo:7.0
+    container_name: merge-bot-db
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mergebot
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mergebot123}
+      MONGO_INITDB_DATABASE: mergebot
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - merge-bot-network
+    ports:
+      - "127.0.0.1:27017:27017"  # Only bind to localhost
+    command: mongod --auth --bind_ip_all
+
+  # Optional: MongoDB Web UI (remove if not needed)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: merge-bot-mongo-ui
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mergebot
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD:-mergebot123}
+      ME_CONFIG_MONGODB_URL: mongodb://mergebot:${MONGO_PASSWORD:-mergebot123}@mongodb:27017/mergebot?authSource=admin
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_UI_PASSWORD:-admin123}
+    networks:
+      - merge-bot-network
+    ports:
+      - "127.0.0.1:8081:8081"  # Only bind to localhost
+    depends_on:
+      - mongodb
+
+networks:
+  merge-bot-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
